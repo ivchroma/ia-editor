@@ -168,11 +168,28 @@ function insRemovePersonShortcut(e){
   insRemovePerson(target);
 }
 
+const interval = 10
+
+function evaluateTimeslotByPerson(queryBegin, queryEnd, personID){
+
+}
+
+function evaluateTimeslot(queryBegin, queryEnd, peopleAttending){
+    for (const person of peopleAttending){
+        available = evaluateTimeslotByPerson(person);
+    }
+}
+
+function getBestTimeslots(e){
+    e.preventDefault();
+}
+
 console.log(document.getElementById("addPersonButton"));
 document.getElementById("addPersonButton").addEventListener("click", addEvent);
 document.getElementById("refreshPeopleButton").addEventListener("click", refreshPeopleTable);
 document.getElementById("removePersonButton").addEventListener("click", insRemovePersonForm);
 document.getElementById("peopleTableBody").addEventListener("click", insRemovePersonShortcut);
+document.getElementById("scheduleMeetingButton").addEventListener("click", getBestTimeslots);
 (async () => {
   let username = session.user.user_metadata.full_name
   uID = await qryID();
@@ -188,6 +205,7 @@ document.getElementById("peopleTableBody").addEventListener("click", insRemovePe
   
   console.log('uID:', uID);
   console.log('uRole:', uRole);
+  console.log('availabilityByID debug: ', qryAvailabilityByID(4));
   people = await qryShowPeople();
   displayPeopleTable(people);
 
