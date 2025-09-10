@@ -54,7 +54,7 @@ async function qryRole() {
 }
 
 async function qryRoleByID(personID) {
-  console.log("qryRoleByID called for person: " + personID)
+  /*console.log("qryRoleByID called for person: " + personID)*/
   const { data, error } = await client
     .from('people')
     .select('role')
@@ -69,7 +69,7 @@ async function qryRoleByID(personID) {
 }
 
 async function qryAvailabilityByID(personID){
-  console.log('qryAvailabilityByID called. personid is: ', personID)
+  /*console.log('qryAvailabilityByID called. personid is: ', personID)*/
   const {data, error} = await client
     .from('calendar')
     .select()
@@ -78,7 +78,7 @@ async function qryAvailabilityByID(personID){
       console.error('qryAvailabilityByID error:', error);
     }
     else{
-      console.log('events obtained!');
+      /*console.log('events obtained!');*/
       return data;
     }
     ;
@@ -195,27 +195,27 @@ async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID){
         let eventTimeBegin = new Date(event.time_begin);
         let eventTimeEnd = new Date(event.time_end);
         
-        console.log("event: " + JSON.stringify(event));
+        /*console.log("event: " + JSON.stringify(event));
         console.log("queryBegin: " + queryBegin + " queryEnd: " + queryEnd);
         console.log("is queryBegin after event begin? " + (queryBegin >= eventTimeBegin));
         console.log("is queryBegin before event end? " + (queryBegin < eventTimeEnd));
         console.log("is queryEnd before event end? " + (queryEnd <= eventTimeEnd));
-        console.log("is queryEnd after event begin? " + (queryEnd > eventTimeBegin));
+        console.log("is queryEnd after event begin? " + (queryEnd > eventTimeBegin));*/
         
         if(queryBegin >= eventTimeBegin && queryEnd <= eventTimeEnd){
-            console.log("query fits perfectly within event!")
+            /*console.log("query fits perfectly within event!")*/
             return true
         }
         else if(queryBegin >= eventTimeBegin && queryBegin < eventTimeEnd && queryEnd > eventTimeEnd){
-            console.log("query's start is covered by event!")
+            /*console.log("query's start is covered by event!")*/
             return await evaluateTimeslotByPerson(event.time_end, queryEnd, personID)
         }
         else if(queryBegin <= eventTimeBegin && queryEnd <= eventTimeEnd && queryEnd > eventTimeBegin){
-            console.log("query's end is covered by event!")
+            /*console.log("query's end is covered by event!")*/
             return await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID)
         }
         else if(queryBegin < eventTimeBegin && queryEnd > eventTimeEnd){
-            console.log("event fully covered by query; query split in half")
+            /*console.log("event fully covered by query; query split in half")*/
             return (await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID) && await evaluateTimeslotByPerson(event.time_end, queryEnd, personID))
         }
     }
@@ -223,15 +223,15 @@ async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID){
 }
 
 async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending){
-    console.log("evaluateTimeslot called. peopleAttending: " + peopleAttending)
+    /*console.log("evaluateTimeslot called. peopleAttending: " + peopleAttending)*/
     let editors = 0;
     let contributors = 0;
     let available;
     const peopleAvailable = [];
     for (const person of peopleAttending){
-        console.log("a person attending is: " + person)
+        /*console.log("a person attending is: " + person)*/
         available = await evaluateTimeslotByPerson(queryBegin, queryEnd, person);
-        console.log("available: " + available);
+        /*console.log("available: " + available);*/
         if (await qryRoleByID(person) == 'editor'){
             if(available == false){
                 return -1;
@@ -248,7 +248,7 @@ async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending){
             }
         }
     }
-    console.log("evaluated timeslot");
+    /*console.log("evaluated timeslot");*/
     return [contributors + editors, peopleAvailable];
 
 }
@@ -266,21 +266,21 @@ async function getBestTimeslots(e){
     console.log("calling meeting between: " + timesBegin + " and: " + timesEnd);
     console.log("people attending: " + peopleAttending);
     for(let t = new Date(timesBegin); t.getTime() + duration * 60000 <= timesEnd.getTime(); t.setMinutes(t.getMinutes() + interval)){
-        console.log("for loop called");
+        /*console.log("for loop called");*/
         let slotStart = new Date(t);
         let slotEnd = new Date(t);
         slotEnd.setMinutes(slotEnd.getMinutes() + duration);
         c = await evaluateTimeslot(slotStart, slotEnd, peopleAttending);
-        console.log("at time " + t + ", " + c[0] + " people are attending.");
+        /*console.log("at time " + t + ", " + c[0] + " people are attending.");*/
         if(c[0] > best){
-            console.log("new ABSOLUTE PEAK, updated times")
+            /*console.log("new ABSOLUTE PEAK, updated times")*/
             best = c[0];
             bestTime = new Date(t);
             bestPeople = c[1];
         }
     }
     console.log("the best time is " + bestTime + " with " + best + " people attending: " + bestPeople);
-    return [best, bestTime];
+    return [best, bestTime, bestPeople];
 }
 
 console.log(document.getElementById("addPersonButton"));
