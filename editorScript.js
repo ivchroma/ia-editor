@@ -1,5 +1,6 @@
 
 document.getElementById("mainUI").style.display = "block";
+document.getElementById("scheduleFormOutput").style.display = "none";
 
 const client = supabase.createClient('https://zzypezedfkegupwpwsam.supabase.co', 'sb_publishable_pasDUaq9bzG0kQkFIvyaeQ_XdvKTBO_')
 
@@ -26,6 +27,7 @@ else {
 
 
 async function qryID() {
+  netcalls++;
   const { data, error } = await client
     .from('people')
     .select('person_id')
@@ -40,6 +42,7 @@ async function qryID() {
 }
 
 async function qryRole() {
+  netcalls++;
   const { data, error } = await client
     .from('people')
     .select('role')
@@ -67,6 +70,22 @@ async function qryRoleByID(personID) {
   }
 
   return data[0].role;
+}
+
+async function qryNameByID(personID) {
+  netcalls++;
+  /*console.log("qryRoleByID called for person: " + personID)*/
+  const { data, error } = await client
+    .from('people')
+    .select('name')
+    .eq('person_id', personID);
+
+  if (error) {
+    console.error('Error in qryNameByID:', error);
+    return null;
+  }
+
+  return data[0].name;
 }
 
 async function qryAvailabilityByID(personID){
@@ -185,7 +204,7 @@ function insRemovePersonShortcut(e){
   insRemovePerson(target);
 }
 
-const interval = 60
+const interval = 10
 
 async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID, schedule){
     queryBegin = new Date(queryBegin);
@@ -232,7 +251,6 @@ async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending, schedules
     const peopleAvailable = [];
     for (const person of peopleAttending){
         /*console.log("a person attending is: " + person)*/
-        /*let schedule = await qryAvailabilityByID(person);*/
         let schedule = schedules[person];
         available = await evaluateTimeslotByPerson(queryBegin, queryEnd, person, schedule);
         /*console.log("available: " + available);*/
@@ -292,9 +310,22 @@ async function getBestTimeslots(e){
         }
     }
     console.log("the best time is " + bestTime + " with " + best + " people attending: " + bestPeople);
+    document.getElementById("scheduleFormOutput").style.display = "block";
+    const tbody = document.getElementById("outputTableBody");
+    tbody.innerHTML = ``;
+    let rows = ``;
+    for (const personChosen of bestPeople){
+      
+      let name = await qryNameByID(personChosen);
+      let row = `<tr><td>${name}</td><td>${roles[personChosen]}</td></tr>`;
+      rows += row;
+    }
+    tbody.innerHTML = rows;
+    document.getElementById("outputTime").textContent = `The best time for your meeting is ${bestTime.toLocaleString()} with the following people attending:`
     console.log(`netcalls: ${netcalls}`);
     console.timeEnd("QueryTimer");
     return [best, bestTime, bestPeople];
+    
 }
 
 console.log(document.getElementById("addPersonButton"));
