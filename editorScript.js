@@ -3,7 +3,7 @@ document.getElementById("mainUI").style.display = "block";
 
 const client = supabase.createClient('https://zzypezedfkegupwpwsam.supabase.co', 'sb_publishable_pasDUaq9bzG0kQkFIvyaeQ_XdvKTBO_')
 
-
+let netcalls = 0;
 const {data:{session}} = await client.auth.getSession()
 
 if(!session){
@@ -54,6 +54,7 @@ async function qryRole() {
 }
 
 async function qryRoleByID(personID) {
+  netcalls++;
   /*console.log("qryRoleByID called for person: " + personID)*/
   const { data, error } = await client
     .from('people')
@@ -69,6 +70,7 @@ async function qryRoleByID(personID) {
 }
 
 async function qryAvailabilityByID(personID){
+  netcalls++;
   /*console.log('qryAvailabilityByID called. personid is: ', personID)*/
   const {data, error} = await client
     .from('calendar')
@@ -185,11 +187,11 @@ function insRemovePersonShortcut(e){
 
 const interval = 60
 
-async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID){
+async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID, schedule){
     queryBegin = new Date(queryBegin);
     queryEnd = new Date(queryEnd);
     /*console.log("evaluateTimeslotByPerson called. queryBegin: " + queryBegin + " queryEnd: " + queryEnd + " personID: " + personID)*/
-    let schedule = await qryAvailabilityByID(personID);
+    
     /*console.log("schedule: " + JSON.stringify(schedule));*/
     for(const event of schedule){
         let eventTimeBegin = new Date(event.time_begin);
@@ -208,21 +210,21 @@ async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID){
         }
         else if(queryBegin >= eventTimeBegin && queryBegin < eventTimeEnd && queryEnd > eventTimeEnd){
             /*console.log("query's start is covered by event!")*/
-            return await evaluateTimeslotByPerson(event.time_end, queryEnd, personID)
+            return await evaluateTimeslotByPerson(event.time_end, queryEnd, personID, schedule)
         }
         else if(queryBegin <= eventTimeBegin && queryEnd <= eventTimeEnd && queryEnd > eventTimeBegin){
             /*console.log("query's end is covered by event!")*/
-            return await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID)
+            return await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID, schedule)
         }
         else if(queryBegin < eventTimeBegin && queryEnd > eventTimeEnd){
             /*console.log("event fully covered by query; query split in half")*/
-            return (await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID) && await evaluateTimeslotByPerson(event.time_end, queryEnd, personID))
+            return (await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID, schedule) && await evaluateTimeslotByPerson(event.time_end, queryEnd, personID, schedule))
         }
     }
     return false;
 }
 
-async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending){
+async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending, schedules, roles){
     /*console.log("evaluateTimeslot called. peopleAttending: " + peopleAttending)*/
     let editors = 0;
     let contributors = 0;
@@ -230,9 +232,11 @@ async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending){
     const peopleAvailable = [];
     for (const person of peopleAttending){
         /*console.log("a person attending is: " + person)*/
-        available = await evaluateTimeslotByPerson(queryBegin, queryEnd, person);
+        /*let schedule = await qryAvailabilityByID(person);*/
+        let schedule = schedules[person];
+        available = await evaluateTimeslotByPerson(queryBegin, queryEnd, person, schedule);
         /*console.log("available: " + available);*/
-        if (await qryRoleByID(person) == 'editor'){
+        if (roles[person] == 'editor'){
             if(available == false){
                 return -1;
             }
@@ -254,6 +258,8 @@ async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending){
 }
 
 async function getBestTimeslots(e){
+    netcalls = 0;
+    console.time("QueryTimer");
     e.preventDefault();
     const timesBegin = new Date(document.getElementById("meetingStartTime").value);
     const timesEnd = new Date(document.getElementById("meetingEndTime").value);
@@ -263,6 +269,12 @@ async function getBestTimeslots(e){
     let bestTime;
     let c;
     let bestPeople;
+    const schedules = {};
+    const roles = {};
+    for (const person of peopleAttending){
+        schedules[person] = await qryAvailabilityByID(person);
+        roles[person] = await qryRoleByID(person);
+    }
     console.log("calling meeting between: " + timesBegin + " and: " + timesEnd);
     console.log("people attending: " + peopleAttending);
     for(let t = new Date(timesBegin); t.getTime() + duration * 60000 <= timesEnd.getTime(); t.setMinutes(t.getMinutes() + interval)){
@@ -270,7 +282,7 @@ async function getBestTimeslots(e){
         let slotStart = new Date(t);
         let slotEnd = new Date(t);
         slotEnd.setMinutes(slotEnd.getMinutes() + duration);
-        c = await evaluateTimeslot(slotStart, slotEnd, peopleAttending);
+        c = await evaluateTimeslot(slotStart, slotEnd, peopleAttending, schedules, roles);
         /*console.log("at time " + t + ", " + c[0] + " people are attending.");*/
         if(c[0] > best){
             /*console.log("new ABSOLUTE PEAK, updated times")*/
@@ -280,6 +292,8 @@ async function getBestTimeslots(e){
         }
     }
     console.log("the best time is " + bestTime + " with " + best + " people attending: " + bestPeople);
+    console.log(`netcalls: ${netcalls}`);
+    console.timeEnd("QueryTimer");
     return [best, bestTime, bestPeople];
 }
 
