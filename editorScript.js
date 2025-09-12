@@ -299,7 +299,7 @@ async function getBestTimeslots(e){
         /*console.log("for loop called");*/
         let slotStart = new Date(t);
         let slotEnd = new Date(t);
-        slotEnd.setMinutes(slotEnd.getMinutes() + duration);
+        slotEnd.setTime(slotEnd.getTime() + duration * 60000);
         c = await evaluateTimeslot(slotStart, slotEnd, peopleAttending, schedules, roles);
         /*console.log("at time " + t + ", " + c[0] + " people are attending.");*/
         if(c[0] > best){
@@ -311,6 +311,7 @@ async function getBestTimeslots(e){
     }
     console.log("the best time is " + bestTime + " with " + best + " people attending: " + bestPeople);
     document.getElementById("scheduleFormOutput").style.display = "block";
+    if(best != -1){
     const tbody = document.getElementById("outputTableBody");
     tbody.innerHTML = ``;
     let rows = ``;
@@ -322,6 +323,10 @@ async function getBestTimeslots(e){
     }
     tbody.innerHTML = rows;
     document.getElementById("outputTime").textContent = `The best time for your meeting is ${bestTime.toLocaleString()} with the following people attending:`
+  }
+  else{
+    document.getElementById("outputTime").textContent = `No suitable times were found.`
+  }
     console.log(`netcalls: ${netcalls}`);
     console.timeEnd("QueryTimer");
     return [best, bestTime, bestPeople];
