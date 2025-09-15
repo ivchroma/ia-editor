@@ -274,7 +274,24 @@ async function evaluateTimeslot(queryBegin, queryEnd, peopleAttending, schedules
     return [contributors + editors, peopleAvailable];
 
 }
+async function normalizeWeek(eventBegin, eventEnd, queryBegin){
+  const eStart = new Date(eventBegin);
+  const eEnd = new Date(eventEnd);
+  const qStart = new Date(queryBegin);
+  const durationMs = eEnd - eStart;
 
+  const eventWeekStart = new Date(eStart);
+  eventWeekStart.setHours(0, 0, 0, 0);
+  eventWeekStart.setDate(eStart.getDate() - eStart.getDay());
+  const eventOffset = eStart.getTime() - eventWeekStart.getTime();
+
+  const queryWeekStart = new Date(qStart);
+  queryWeekStart.setHours(0, 0, 0, 0);
+  queryWeekStart.setDate(qStart.getDate() - qStart.getDay());
+  const eventNormBegin = new Date(queryWeekStart.getTime() + eventOffset);
+  const eventNormEnd = new Date(eventNormBegin.getTime() + durationMs);
+  return { time_begin: eventNormBegin, time_end: eventNormEnd };
+}
 async function getBestTimeslots(e){
     netcalls = 0;
     console.time("QueryTimer");
@@ -292,7 +309,18 @@ async function getBestTimeslots(e){
     for (const person of peopleAttending){
         schedules[person] = await qryAvailabilityByID(person);
         roles[person] = await qryRoleByID(person);
+        for(const event of schedules[person]){
+          if(event.state == "weekly"){
+            let mirrorEvent = {
+              state: "mirror",
+              ...await normalizeWeek(event.time_begin, event.time_end, timesBegin)
+            };
+            console.log(mirrorEvent);
+            schedules[person].push(mirrorEvent);
+          }
+        }
     }
+    console.log(schedules);
     console.log("calling meeting between: " + timesBegin + " and: " + timesEnd);
     console.log("people attending: " + peopleAttending);
     for(let t = new Date(timesBegin); t.getTime() + duration * 60000 <= timesEnd.getTime(); t.setMinutes(t.getMinutes() + interval)){
