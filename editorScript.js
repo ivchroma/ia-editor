@@ -315,12 +315,12 @@ async function getBestTimeslots(e){
               state: "mirror",
               ...await normalizeWeek(event.time_begin, event.time_end, timesBegin)
             };
-            console.log(mirrorEvent);
+            /*console.log(mirrorEvent);*/
             schedules[person].push(mirrorEvent);
           }
         }
     }
-    console.log(schedules);
+    /*console.log(schedules);*/
     console.log("calling meeting between: " + timesBegin + " and: " + timesEnd);
     console.log("people attending: " + peopleAttending);
     for(let t = new Date(timesBegin); t.getTime() + duration * 60000 <= timesEnd.getTime(); t.setMinutes(t.getMinutes() + interval)){
