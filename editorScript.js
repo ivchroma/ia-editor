@@ -1,5 +1,5 @@
 
-document.getElementById("mainUI").style.display = "block";
+document.getElementById("mainUI").style.display = "none";
 document.getElementById("scheduleFormOutput").style.display = "none";
 
 const client = supabase.createClient('https://zzypezedfkegupwpwsam.supabase.co', 'sb_publishable_pasDUaq9bzG0kQkFIvyaeQ_XdvKTBO_')
@@ -89,8 +89,9 @@ async function qryNameByID(personID) {
 }
 
 async function qryAvailabilityByID(personID){
+  /* "netcalls" tracks the amount of database queries used. */
   netcalls++;
-  /*console.log('qryAvailabilityByID called. personid is: ', personID)*/
+  /*console.log('qryAvailabilityByID called. personid is: ', personID) */
   const {data, error} = await client
     .from('calendar')
     .select()
@@ -99,7 +100,7 @@ async function qryAvailabilityByID(personID){
       console.error('qryAvailabilityByID error:', error);
     }
     else{
-      /*console.log('events obtained!');*/
+      /*console.log('events obtained!'); */
       return data;
     }
     ;
@@ -207,12 +208,13 @@ function insRemovePersonShortcut(e){
 const interval = 10
 
 async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID, schedule){
+    /* Format manipulation so timestamps can be compared like integers */
     queryBegin = new Date(queryBegin);
     queryEnd = new Date(queryEnd);
     /*console.log("evaluateTimeslotByPerson called. queryBegin: " + queryBegin + " queryEnd: " + queryEnd + " personID: " + personID)*/
-    
     /*console.log("schedule: " + JSON.stringify(schedule));*/
     for(const event of schedule){
+        /* Format manipulation so timestamps can be compared like integers */
         let eventTimeBegin = new Date(event.time_begin);
         let eventTimeEnd = new Date(event.time_end);
         
@@ -223,18 +225,25 @@ async function evaluateTimeslotByPerson(queryBegin, queryEnd, personID, schedule
         console.log("is queryEnd before event end? " + (queryEnd <= eventTimeEnd));
         console.log("is queryEnd after event begin? " + (queryEnd > eventTimeBegin));*/
         
+        /* Timeline: eventTimeBegin - queryBegin - queryEnd - eventTimeEnd */
         if(queryBegin >= eventTimeBegin && queryEnd <= eventTimeEnd){
             /*console.log("query fits perfectly within event!")*/
             return true
         }
+
+        /* Timeline: eventTimeBegin - queryBegin - eventTimeEnd - queryEnd */
         else if(queryBegin >= eventTimeBegin && queryBegin < eventTimeEnd && queryEnd > eventTimeEnd){
             /*console.log("query's start is covered by event!")*/
             return await evaluateTimeslotByPerson(event.time_end, queryEnd, personID, schedule)
         }
+
+        /* Timeline: queryBegin - eventTimeBegin - queryEnd - eventTimeEnd */
         else if(queryBegin <= eventTimeBegin && queryEnd <= eventTimeEnd && queryEnd > eventTimeBegin){
             /*console.log("query's end is covered by event!")*/
             return await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID, schedule)
         }
+
+        /* Timeline: queryEnd - eventTimeEnd - eventTimeBegin - queryEnd */
         else if(queryBegin < eventTimeBegin && queryEnd > eventTimeEnd){
             /*console.log("event fully covered by query; query split in half")*/
             return (await evaluateTimeslotByPerson(queryBegin, event.time_begin, personID, schedule) && await evaluateTimeslotByPerson(event.time_end, queryEnd, personID, schedule))
@@ -278,17 +287,26 @@ async function normalizeWeek(eventBegin, eventEnd, queryBegin){
   const eStart = new Date(eventBegin);
   const eEnd = new Date(eventEnd);
   const qStart = new Date(queryBegin);
+
+  /*Calculates the duration of the event.*/
   const durationMs = eEnd - eStart;
 
+  /*Creates a dummy date at the start of the week where eventBegin takes place (Sunday 00:00:00.00).*/
   const eventWeekStart = new Date(eStart);
   eventWeekStart.setHours(0, 0, 0, 0);
   eventWeekStart.setDate(eStart.getDate() - eStart.getDay());
+
+  /*Calculates eventBegin's position within that week - i.e. how much time there is between eventBegin and the start of the week.*/
   const eventOffset = eStart.getTime() - eventWeekStart.getTime();
 
+  /*Creates a dummy date at the start of the week where queryBegin takes place (Sunday 00:00:00.00).*/
   const queryWeekStart = new Date(qStart);
   queryWeekStart.setHours(0, 0, 0, 0);
   queryWeekStart.setDate(qStart.getDate() - qStart.getDay());
+
+  /*Adds the start of the week where the query is and the offset of the event from the start of the week. */
   const eventNormBegin = new Date(queryWeekStart.getTime() + eventOffset);
+  /*Adds the duration of the event to obtain event end. */
   const eventNormEnd = new Date(eventNormBegin.getTime() + durationMs);
   return { time_begin: eventNormBegin, time_end: eventNormEnd };
 }
@@ -331,7 +349,7 @@ async function getBestTimeslots(e){
         c = await evaluateTimeslot(slotStart, slotEnd, peopleAttending, schedules, roles);
         /*console.log("at time " + t + ", " + c[0] + " people are attending.");*/
         if(c[0] > best){
-            /*console.log("new ABSOLUTE PEAK, updated times")*/
+            /*console.log("new peak, updated times")*/
             best = c[0];
             bestTime = new Date(t);
             bestPeople = c[1];
