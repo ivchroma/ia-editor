@@ -1,2 +1,2 @@
 # ia-editor
-IA - editor website. yippie!
+CS HL IA - contributor website.
